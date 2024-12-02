@@ -3,6 +3,7 @@
 import pygame
 import config
 import os
+from inventory import Inventory
 from items import Item
 
 class Player(pygame.sprite.Sprite):
@@ -28,6 +29,9 @@ class Player(pygame.sprite.Sprite):
         self.xp = 0
         self.gold = 0
         self.inventory = Inventory()  # Initialize inventory
+        self.abilities = []  # List to store unlocked abilities
+        self.health = 100  # Initialize player health
+        self.max_health = 100  # Define max health
 
     def load_frames(self):
         """
@@ -128,15 +132,18 @@ class Player(pygame.sprite.Sprite):
             self.grant_ability(ability)
         # Grant items
         for item in items:
-            self.add_item_to_inventory(item)
+            self.inventory.add_item(item)
         print(f"Received Reward: {xp} XP, {gold} Gold, {abilities}, {items}")
+        self.check_level_up()  # Check for level-up after receiving rewards
 
     def grant_ability(self, ability):
         """
         Grant a new ability to the player.
         """
         # Implement ability granting logic
-        print(f"New Ability Acquired: {ability}")
+        if ability and ability not in self.abilities:
+            self.abilities.append(ability)
+            print(f"New Ability Granted: {ability}")
 
     def add_item_to_inventory(self, item):
         """
@@ -144,21 +151,53 @@ class Player(pygame.sprite.Sprite):
         """
         # Implement inventory logic
         print(f"New Item Acquired: {item}")
-class Inventory:
-    def __init__(self):
-        self.items = []
     
-    def add_item(self, item):
-        self.items.append(item)
-        print(f"Added {item.item_type} to inventory.")
+    def attack(self):
+        if 'attack' in self.abilities:
+            print("Player attacks!")
+            # Implement attack logic here
+        else:
+            print("You need to unlock the attack ability first!")
     
-    def remove_item(self, item):
-        if item in self.items:
-            self.items.remove(item)
-            print(f"Removed {item.item_type} from inventory.")
+    def check_level_up(self):
+        """
+        Check if the player has enough XP to level up and unlock new abilities.
+        """
+        level_thresholds = [100, 300, 600, 1000]  # Example thresholds
+        current_level = len(self.abilities) + 1
+        if current_level <= len(level_thresholds) and self.xp >= level_thresholds[current_level - 1]:
+            new_ability = self.get_new_ability(current_level)
+            if new_ability:
+                self.grant_ability(new_ability)
+                print(f"Leveled Up to Level {current_level}! Unlocked ability: {new_ability}")
+
+    def get_new_ability(self, level):
+        """
+        Define abilities unlocked at each level.
+        """
+        abilities = {
+            1: 'attack',
+            2: 'jump',
+            3: 'defend',
+            4: 'double_jump'
+        }
+        return abilities.get(level, None)
     
-    def has_item(self, item_type):
-        return any(item.item_type == item_type for item in self.items)
+    def consume_mushroom(self, item):
+        """
+        Consume a mushroom to restore health.
+        """
+        health_restore = 20  # Define how much health is restored per mushroom
+        self.health += health_restore
+        if self.health > self.max_health:
+            self.health = self.max_health  # Cap health at max_health
+        print(f"Consumed {item.item_type}. Health restored by {health_restore}. Current Health: {self.health}")
     
-    def get_items(self):
-        return self.items
+    def take_damage(self, damage):
+        """
+        Reduce player's health by damage amount.
+        """
+        self.health -= damage
+        if self.health < 0:
+            self.health = 0  # Prevent negative health
+        print(f"Player took {damage} damage. Current Health: {self.health}")
