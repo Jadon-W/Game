@@ -17,3 +17,4 @@ class Camera:
         # Clamp the offset so the camera doesn't go beyond the world boundaries
         self.offset_x = max(0, min(self.offset_x, world.width - self.width))
         self.offset_y = max(0, min(self.offset_y, world.height - self.height))
+
