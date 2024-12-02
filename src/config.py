@@ -73,8 +73,8 @@ QUEST_OBJECTIVES = {
 }
 
 QUEST_REWARDS = {
-    'collection': {'xp': 100, 'gold': 50},
-    'exploration': {'xp': 150, 'gold': 75},
-    'combat': {'xp': 200, 'gold': 100},
-    'delivery': {'xp': 120, 'gold': 60}
+    'collection': {'xp': 100, 'gold': 50, 'abilities': ['attack']},
+    'exploration': {'xp': 150, 'gold': 75, 'abilities': []},
+    'combat': {'xp': 200, 'gold': 100, 'abilities': []},
+    'delivery': {'xp': 120, 'gold': 60, 'abilities': []}
 }
