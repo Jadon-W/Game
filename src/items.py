@@ -12,6 +12,7 @@ class Item(pygame.sprite.Sprite):
         self.images = self.load_images()
         self.image = self.get_image()
         self.rect = self.image.get_rect(topleft=(x, y))
+        self.usable = True if item_type == 'mushroom' else False  # Define usability
     
     def load_images(self):
         images = {}
