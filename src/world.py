@@ -325,16 +325,17 @@ class World:
                 animated = True
                 frame = self.animation_frame % len(self.images['water'])
             tile.draw(surface, camera, animated, frame)
-        self.active_items.draw(surface)
-        for item in self.active_items:
-            item.draw(surface, camera)
-
+        
         # Handle animated tiles (e.g., ocean)
         if len(self.images['water']) > 1:
             self.animation_timer += 1
             if self.animation_timer >= 10:  # Adjust frame rate as needed
                 self.animation_timer = 0
                 self.animation_frame += 1
+        
+        # Draw active items (e.g., mushrooms)
+        for item in self.active_items:
+            item.draw(surface, camera)
 
     def get_tile_type(self, x, y):
         """
