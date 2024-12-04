@@ -113,16 +113,21 @@ class QuestManager:
                 collected_items = pygame.sprite.spritecollide(player, world.active_items, True)
                 for item in collected_items:
                     if item.item_type == 'mushroom':
-                        quest.progress += 1
-                        print(f"Quest Progress Updated: {quest.description} [{quest.progress}/{quest.target}]")
-                        # Add the mushroom to the player's inventory
-                        player.inventory.add_item(item)
-                        if quest.is_completed():
-                            quest.complete_quest(player, game)  # Pass Game instance
-                            self.active_quests.remove(quest)
-                            self.completed_quests.append(quest)
-                            print(f"Quest Completed: {quest.description}")
-                            self.generate_quest(world)
+                        # Attempt to add the item to inventory
+                        added = player.inventory.add_item(item, game)
+                        if added:
+                            quest.progress += 1
+                            print(f"Quest Progress Updated: {quest.description} [{quest.progress}/{quest.target}]")
+                            if quest.is_completed():
+                                quest.complete_quest(player, game)  # Pass Game instance
+                                self.active_quests.remove(quest)
+                                self.completed_quests.append(quest)
+                                print(f"Quest Completed: {quest.description}")
+                                self.generate_quest(world)
+                        else:
+                            # If not added, re-add the item to active_items so it remains on the map
+                            world.active_items.add(item)
+                            print(f"{item.item_type.capitalize()} remains on the ground as inventory is full.")
             elif quest.quest_type == 'combat':
                 # Handle combat quests (to be implemented later)
                 pass
@@ -143,4 +148,5 @@ class QuestManager:
                         self.completed_quests.append(quest)
                         print(f"Quest Completed: {quest.description}")
                         self.generate_quest(world)  # Generate a new quest upon completion
+
 
