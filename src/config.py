@@ -1,24 +1,86 @@
-# camera.py
+# config.py
+import os
 
-import config
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEBUG = True  # Set to False to reduce console output
 
-class Camera:
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
-        self.offset_x = 0
-        self.offset_y = 0
+# Terrain Images
+TERRAIN_TILES = {
+    'grass': os.path.join(BASE_DIR, 'assets', 'images', 'grass.png'),
+    'water': os.path.join(BASE_DIR, 'assets', 'images', 'water.png'),
+    'mountain': os.path.join(BASE_DIR, 'assets', 'images', 'mountain.png'),
+    'sand': os.path.join(BASE_DIR, 'assets', 'images', 'sand.png'),
+    'forest': os.path.join(BASE_DIR, 'assets', 'images', 'forest.png')
+}
 
-    def update(self, player, world):
-        """
-        Update the camera's offset based on the player's position.
-        """
-        # Center the camera on the player
-        self.offset_x = player.rect.centerx - self.width // 2
-        self.offset_y = player.rect.centery - self.height // 2
+# Additional Terrain Elements
+TREE_IMAGE = os.path.join(BASE_DIR, 'assets', 'images', 'tree.png')
+PATH_IMAGE = os.path.join(BASE_DIR, 'assets', 'images', 'path.png')
+ROCK_IMAGE = os.path.join(BASE_DIR, 'assets', 'images', 'rock.png')  # New
+SANDCASTLE_IMAGE = os.path.join(BASE_DIR, 'assets', 'images', 'sandcastle.png')  # New
+FRUIT_IMAGE = os.path.join(BASE_DIR, 'assets', 'images', 'fruit.png')  # 4x4 sprite sheet
+FLOWER_IMAGE = os.path.join(BASE_DIR, 'assets', 'images', 'flower.png')
+MUSHROOM_IMAGE = os.path.join(BASE_DIR, 'assets', 'images', 'mushroom.png')
 
-        # Clamp the camera to the world boundaries
-        self.offset_x = max(0, min(self.offset_x, world.width - self.width))
-        self.offset_y = max(0, min(self.offset_y, world.height - self.height))
-        
- 
+# Animated Tiles
+OCEAN_ANIMATION = os.path.join(BASE_DIR, 'assets', 'images', 'ocean.png')  # Changed from ocean.gif
+
+# Corrected Enemy Image Paths
+EYE_ROCK_IMAGE = os.path.join(BASE_DIR, 'assets', 'enemies', 'eye-rock.png')
+FOOT_SOLDIER_IMAGE = os.path.join(BASE_DIR, 'assets', 'enemies', 'foot-soldier.png')
+
+# Screen dimensions
+WIDTH = 800
+HEIGHT = 600
+
+# Colors (Retained for fallback and other uses)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+GRAY = (128, 128, 128)
+BLUE = (0, 0, 255)
+BROWN = (139, 69, 19)
+YELLOW = (255, 255, 0)
+
+# Player configuration
+PLAYER_COLOR = (255, 0, 0)  # Bright Red
+PLAYER_OUTLINE_COLOR = (255, 255, 255)  # White
+
+PLAYER_SPRITE_PATH = os.path.join(BASE_DIR, 'assets', 'images', 'player_sprites.png')
+PLAYER_SPRITE_WIDTH = 16  # Width of each sprite frame
+PLAYER_SPRITE_HEIGHT = 18  # Height of each sprite frame
+PLAYER_ANIMATION_SPEED = 0.1  # Adjust for animation smoothness
+
+# Frames per second
+FPS = 60
+
+# Tile configuration
+TILE_SIZE = 16  # 16x16 pixels
+
+# World dimensions
+WORLD_WIDTH = 900 * TILE_SIZE  # 4800 pixels
+WORLD_HEIGHT = 900 * TILE_SIZE  # 4800 pixels
+
+# Quest configuration
+QUEST_TYPES = ['collection', 'exploration', 'combat', 'delivery']
+
+QUEST_DESCRIPTIONS = {
+    'collection': "Collect 10 mushrooms from the forest.",
+    'exploration': "Discover a hidden cave in the mountains.",
+    'combat': "Defeat 5 bandits near the city.",
+    'delivery': "Deliver a message to the neighboring town."
+}
+
+QUEST_OBJECTIVES = {
+    'collection': "Collect 10 mushrooms.",
+    'exploration': "Find and explore the hidden cave.",
+    'combat': "Defeat 5 bandits.",
+    'delivery': "Deliver the message to the next town."
+}
+
+QUEST_REWARDS = {
+    'collection': {'xp': 100, 'gold': 50, 'abilities': ['attack']},
+    'exploration': {'xp': 150, 'gold': 75, 'abilities': []},
+    'combat': {'xp': 200, 'gold': 100, 'abilities': []},
+    'delivery': {'xp': 120, 'gold': 60, 'abilities': []}
+}
