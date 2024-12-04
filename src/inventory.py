@@ -2,14 +2,21 @@
 
 import pygame
 import config
+capacity = 20
 
 class Inventory:
     def __init__(self):
         self.items = []
+        self.capacity = capacity  # Maximum number of items allowed
         self.categories = {}
         self.selected_item = None  # Track selected item for usage
     
-    def add_item(self, item):
+    def add_item(self, item, game=None):
+        if len(self.items) >= self.capacity:
+            print(f"Cannot add {item.item_type}: Inventory is full.")
+            if game:
+                game.add_notification("Inventory is full! Cannot pick up the item.")
+            return False  # Indicate that the item was not added
         self.items.append(item)
         category = self.get_category(item.item_type)
         if category:
@@ -17,6 +24,7 @@ class Inventory:
                 self.categories[category] = []
             self.categories[category].append(item)
         print(f"Added {item.item_type} to inventory.")
+        return True  # Indicate successful addition
     
     def remove_item(self, item):
         if item in self.items:
@@ -24,7 +32,7 @@ class Inventory:
             category = self.get_category(item.item_type)
             if category and item in self.categories.get(category, []):
                 self.categories[category].remove(item)
-        print(f"Removed {item.item_type} from inventory.")
+            print(f"Removed {item.item_type} from inventory.")
     
     def has_item(self, item_type):
         return any(item.item_type == item_type for item in self.items)
@@ -67,10 +75,15 @@ class Inventory:
         
         surface.blit(inventory_surface, (config.WIDTH - 270, 10))  # Position at top-right corner
 
+        # Display Inventory Title
         title = font.render("Inventory", True, config.YELLOW)
         surface.blit(title, (config.WIDTH - 260, 20))
+        
+        # Display Inventory Capacity
+        capacity_text = font.render(f"Items: {len(self.items)}/{self.capacity}", True, config.WHITE)
+        surface.blit(capacity_text, (config.WIDTH - 260, 50))
 
-        y_offset = 60
+        y_offset = 80
         for category, items in self.categories.items():
             # Display category title
             category_text = font.render(category, True, config.WHITE)
@@ -98,7 +111,6 @@ class Inventory:
                 surface.blit(item_text, (config.WIDTH - 230, y_offset + 5))
 
                 y_offset += 30  # Space between items
-    
     # Optional: Implement Mouse Interaction for Using Items
     def handle_mouse_click(self, mouse_pos, player):
         """
@@ -113,3 +125,4 @@ class Inventory:
                     self.use_item(player, item)
                     break
                 category_y += 30
+
