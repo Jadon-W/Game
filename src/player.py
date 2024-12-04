@@ -32,6 +32,41 @@ class Player(pygame.sprite.Sprite):
         self.abilities = []  # List to store unlocked abilities
         self.health = 100  # Initialize player health
         self.max_health = 100  # Define max health
+        self.attack_cooldown = 0  # Cooldown timer for attacks
+        self.attack_speed = 30  # Frames between attacks
+        self.xp_thresholds = [100, 300, 600, 1000]  # XP needed for each level
+        self.level = 1  # Optional: Track player level
+        self.is_flashing = False
+        self.flash_duration = 10  # Frames to flash
+        self.flash_timer = 0
+        self.original_image = self.image.copy()
+        self.flash_color = (255, 0, 0)  # Red color for flash
+        self.recoil_distance_factor = 5  # Adjust this factor to control recoil sensitivity
+        self.flash_overlay = pygame.Surface(self.image.get_size(), pygame.SRCALPHA)
+        self.flash_overlay.fill((255, 0, 0, 100))  # Semi-transparent red
+
+        # Load attack sound (optional)
+        try:
+            self.attack_sound = pygame.mixer.Sound(os.path.join(config.BASE_DIR, 'assets', 'sounds', 'attack.wav'))
+        except pygame.error as e:
+            print(f"Unable to load attack sound: {e}")
+            self.attack_sound = None  # Handle missing sound gracefully
+
+        # Load hit sound (optional)
+        try:
+            self.hit_sound = pygame.mixer.Sound(os.path.join(config.BASE_DIR, 'assets', 'sounds', 'player_hit.wav'))
+        except pygame.error as e:
+            print(f"Unable to load hit sound: {e}")
+            self.hit_sound = None  # Handle missing sound gracefully
+
+    
+    def receive_xp(self, amount):
+        """
+        Add XP to the player and handle level-up if thresholds are met.
+        """
+        self.xp += amount
+        print(f"Player received {amount} XP. Total XP: {self.xp}")
+        self.check_level_up()
 
     def load_frames(self):
         """
@@ -66,19 +101,20 @@ class Player(pygame.sprite.Sprite):
         self.moving = False
         dx, dy = 0, 0
 
-        if keys_pressed[pygame.K_LEFT]:
+        # Implementing WASD movement
+        if keys_pressed[pygame.K_a]:
             dx -= self.speed
             self.direction = 'left'
             self.moving = True
-        if keys_pressed[pygame.K_RIGHT]:
+        if keys_pressed[pygame.K_d]:
             dx += self.speed
             self.direction = 'right'
             self.moving = True
-        if keys_pressed[pygame.K_UP]:
+        if keys_pressed[pygame.K_w]:
             dy -= self.speed
             self.direction = 'up'
             self.moving = True
-        if keys_pressed[pygame.K_DOWN]:
+        if keys_pressed[pygame.K_s]:
             dy += self.speed
             self.direction = 'down'
             self.moving = True
@@ -110,12 +146,43 @@ class Player(pygame.sprite.Sprite):
         else:
             # Idle frame (first frame of the current direction)
             self.image = self.frames[self.direction][0]
-
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
+        if self.is_flashing:
+            print("Flash effect active.")
+            self.flash_timer -= 1
+            if self.flash_timer <= 0:
+                self.is_flashing = False
     def draw(self, surface, camera):
         # Calculate player's position relative to the camera
         draw_x = self.rect.x - camera.offset_x
         draw_y = self.rect.y - camera.offset_y
         surface.blit(self.image, (draw_x, draw_y))
+        
+        # Draw flash overlay if flashing
+        if self.is_flashing:
+            surface.blit(self.flash_overlay, (draw_x, draw_y))
+
+    def get_attack_effect_position(self):
+        """
+        Determine where to place the attack effect based on the player's direction.
+        """
+        effect_offset = 20  # Distance from the player to place the effect
+        if self.direction == 'up':
+            pos = (self.rect.x + self.rect.width // 2 - self.attack_effect_image.get_width() // 2,
+                   self.rect.y - self.attack_effect_image.get_height())
+        elif self.direction == 'down':
+            pos = (self.rect.x + self.rect.width // 2 - self.attack_effect_image.get_width() // 2,
+                   self.rect.y + self.rect.height)
+        elif self.direction == 'left':
+            pos = (self.rect.x - self.attack_effect_image.get_width(),
+                   self.rect.y + self.rect.height // 2 - self.attack_effect_image.get_height() // 2)
+        elif self.direction == 'right':
+            pos = (self.rect.x + self.rect.width,
+                   self.rect.y + self.rect.height // 2 - self.attack_effect_image.get_height() // 2)
+        else:
+            pos = self.rect.topleft  # Default position
+        return pos
 
     def receive_reward(self, reward):
         """
@@ -151,25 +218,18 @@ class Player(pygame.sprite.Sprite):
         """
         # Implement inventory logic
         print(f"New Item Acquired: {item}")
-    
-    def attack(self):
-        if 'attack' in self.abilities:
-            print("Player attacks!")
-            # Implement attack logic here
-        else:
-            print("You need to unlock the attack ability first!")
-    
+
     def check_level_up(self):
         """
-        Check if the player has enough XP to level up and unlock new abilities.
+        Check if the player has enough XP to level up.
         """
-        level_thresholds = [100, 300, 600, 1000]  # Example thresholds
-        current_level = len(self.abilities) + 1
-        if current_level <= len(level_thresholds) and self.xp >= level_thresholds[current_level - 1]:
-            new_ability = self.get_new_ability(current_level)
-            if new_ability:
-                self.grant_ability(new_ability)
-                print(f"Leveled Up to Level {current_level}! Unlocked ability: {new_ability}")
+        if self.level <= len(self.xp_thresholds):
+            if self.xp >= self.xp_thresholds[self.level - 1]:
+                self.level += 1
+                new_ability = self.get_new_ability(self.level)
+                if new_ability:
+                    self.grant_ability(new_ability)
+                print(f"Leveled Up to Level {self.level}! Unlocked ability: {new_ability}")
 
     def get_new_ability(self, level):
         """
@@ -192,12 +252,125 @@ class Player(pygame.sprite.Sprite):
         if self.health > self.max_health:
             self.health = self.max_health  # Cap health at max_health
         print(f"Consumed {item.item_type}. Health restored by {health_restore}. Current Health: {self.health}")
-    
-    def take_damage(self, damage):
+
+    def take_damage(self, damage, attacker_direction=None):
         """
-        Reduce player's health by damage amount.
+        Reduce player's health by damage amount and trigger flash effect and recoil.
+        
+        Parameters:
+            damage (int): Amount of damage taken.
+            attacker_direction (str): Direction from which the attack originated ('up', 'down', 'left', 'right').
         """
         self.health -= damage
         if self.health < 0:
             self.health = 0  # Prevent negative health
-        print(f"Player took {damage} damage. Current Health: {self.health}")
+        if config.DEBUG:
+            print(f"Player took {damage} damage. Current Health: {self.health}")
+        
+        # Play hit sound if available
+        if self.hit_sound:
+            self.hit_sound.play()
+        
+        # Trigger flash effect
+        self.is_flashing = True
+        self.flash_timer = self.flash_duration
+        
+        # Apply recoil effect based on damage and attacker's direction
+        self.recoil(damage, attacker_direction)
+    
+    def recoil(self, damage, attacker_direction):
+        """
+        Apply a recoil effect when the player is hit.
+        The recoil distance increases with the damage taken.
+        
+        Parameters:
+            damage (int): Amount of damage taken.
+            attacker_direction (str): Direction from which the attack originated.
+        """
+        # Calculate recoil distance based on damage
+        recoil_distance = damage * self.recoil_distance_factor
+        
+        # Determine recoil direction based on attacker's direction
+        if attacker_direction == 'up':
+            # Enemy is above; recoil player down
+            self.rect.y += recoil_distance
+        elif attacker_direction == 'down':
+            # Enemy is below; recoil player up
+            self.rect.y -= recoil_distance
+        elif attacker_direction == 'left':
+            # Enemy is to the left; recoil player right
+            self.rect.x += recoil_distance
+        elif attacker_direction == 'right':
+            # Enemy is to the right; recoil player left
+            self.rect.x -= recoil_distance
+        else:
+            # Default recoil direction (optional: random or based on player's last movement)
+            pass
+        
+        # Ensure the player doesn't move out of bounds
+        self.rect.x = max(0, min(self.rect.x, config.WORLD_WIDTH - self.rect.width))
+        self.rect.y = max(0, min(self.rect.y, config.WORLD_HEIGHT - self.rect.height))
+    def attack(self, enemies):
+        """
+        Perform an attack on enemies within range.
+        """
+        if 'attack' in self.abilities and self.attack_cooldown == 0:
+            print("Player attacks!")
+            # Play attack sound if available
+            if self.attack_sound:
+                self.attack_sound.play()
+            # Define attack range and damage
+            attack_range = 50  # Define the range of the attack
+            attack_rect = self.get_attack_rect(attack_range)
+            # Check collision with enemies within the attack_rect
+            hits = [enemy for enemy in enemies if attack_rect.colliderect(enemy.rect)]
+            if hits:
+                for enemy in hits:
+                    enemy.take_damage(10)  # Define damage amount
+            else:
+                print("No enemies in attack range.")
+            self.attack_cooldown = self.attack_speed  # Reset cooldown
+            # Remove attack animation trigger
+            # self.is_attacking = True
+            # self.attack_animation_timer = self.attack_animation_duration
+        elif 'attack' not in self.abilities:
+            print("You need to unlock the attack ability first!")
+        else:
+            print("Attack is on cooldown.")
+    
+    def get_attack_rect(self, attack_range):
+        """
+        Get the attack rectangle based on the player's current direction.
+        """
+        if self.direction == 'up':
+            attack_rect = pygame.Rect(
+                self.rect.x,
+                self.rect.y - attack_range,
+                self.rect.width,
+                attack_range
+            )
+        elif self.direction == 'down':
+            attack_rect = pygame.Rect(
+                self.rect.x,
+                self.rect.y + self.rect.height,
+                self.rect.width,
+                attack_range
+            )
+        elif self.direction == 'left':
+            attack_rect = pygame.Rect(
+                self.rect.x - attack_range,
+                self.rect.y,
+                attack_range,
+                self.rect.height
+            )
+        elif self.direction == 'right':
+            attack_rect = pygame.Rect(
+                self.rect.x + self.rect.width,
+                self.rect.y,
+                attack_range,
+                self.rect.height
+            )
+        else:
+            # Default attack_rect if direction is undefined
+            attack_rect = self.rect.inflate(attack_range, attack_range)
+        return attack_rect
