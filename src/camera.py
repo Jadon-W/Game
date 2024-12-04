@@ -10,11 +10,15 @@ class Camera:
         self.offset_y = 0
 
     def update(self, player, world):
+        """
+        Update the camera's offset based on the player's position.
+        """
         # Center the camera on the player
-        self.offset_x = player.rect.x - self.width // 2
-        self.offset_y = player.rect.y - self.height // 2
+        self.offset_x = player.rect.centerx - self.width // 2
+        self.offset_y = player.rect.centery - self.height // 2
 
-        # Clamp the offset so the camera doesn't go beyond the world boundaries
+        # Clamp the camera to the world boundaries
         self.offset_x = max(0, min(self.offset_x, world.width - self.width))
         self.offset_y = max(0, min(self.offset_y, world.height - self.height))
-
+        
+ 
