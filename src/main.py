@@ -8,6 +8,7 @@ def main():
     pygame.init()
 
     # Set up display (Full-Screen)
+    pygame.mixer.init()  # Initialize the mixer for sound
     WINDOW = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     screen_info = pygame.display.Info()
     config.WIDTH = screen_info.current_w
@@ -23,4 +24,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main() 
