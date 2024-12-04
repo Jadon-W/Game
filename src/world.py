@@ -1,4 +1,4 @@
-# world.py
+# world.py 
 from items import Item
 import pygame
 import random
@@ -135,6 +135,7 @@ class World:
         self.animation_timer = 0
         self.active_items = pygame.sprite.Group()
 
+    
     def load_images(self):
         # Load all terrain images
         self.images = {}
@@ -219,44 +220,46 @@ class World:
                 self.images['water'] = [pygame.Surface((config.TILE_SIZE, config.TILE_SIZE))]
                 self.images['water'][0].fill(config.BLUE)
 
+    
     def generate_world(self):
-        # Use Perlin noise for smooth biome transitions
-        scale = 150.0  # Adjust scale for larger biome regions
-        octaves = 4    # Reduced octaves for smoother transitions
-        persistence = 0.5
-        lacunarity = 2.0
+            # Adjust Perlin noise scale for larger world
+            scale = 200.0  # Increased from 150.0 for smoother transitions in larger world
+            octaves = 4
+            persistence = 0.5
+            lacunarity = 2.0
 
-        self.tiles = []
-        for row in range(self.height // config.TILE_SIZE):
-            for col in range(self.width // config.TILE_SIZE):
-                x = col * config.TILE_SIZE
-                y = row * config.TILE_SIZE
-                noise_val = noise.pnoise2(col / scale,
-                                          row / scale,
-                                          octaves=octaves,
-                                          persistence=persistence,
-                                          lacunarity=lacunarity,
-                                          repeatx=1024,
-                                          repeaty=1024,
-                                          base=0)
-                # Normalize noise value to [0,1]
-                noise_val = (noise_val + 0.5)
-                tile_type = self.get_biome_from_noise(noise_val)
-                tile = Tile(x, y, tile_type, self.images)
-                self.tiles.append(tile)
+            self.tiles = []
+            for row in range(self.height // config.TILE_SIZE):
+                for col in range(self.width // config.TILE_SIZE):
+                    x = col * config.TILE_SIZE
+                    y = row * config.TILE_SIZE
+                    noise_val = noise.pnoise2(col / scale,
+                                            row / scale,
+                                            octaves=octaves,
+                                            persistence=persistence,
+                                            lacunarity=lacunarity,
+                                            repeatx=1024,
+                                            repeaty=1024,
+                                            base=0)
+                    # Normalize noise value to [0,1]
+                    noise_val = (noise_val + 0.5)
+                    tile_type = self.get_biome_from_noise(noise_val)
+                    tile = Tile(x, y, tile_type, self.images)
+                    self.tiles.append(tile)
+    
 
     def get_biome_from_noise(self, noise_val):
         """
         Determine biome type based on normalized noise value.
         Adjust thresholds as needed for desired biome distribution.
         """
-        if noise_val < 0.2:
+        if noise_val < 0.1:
             return 'water'
-        elif noise_val < 0.4:
+        elif noise_val < 0.3:
             return 'sand'
         elif noise_val < 0.6:
             return 'grass'
-        elif noise_val < 0.8:
+        elif noise_val < 0.7:
             return 'forest'
         else:
             return 'mountain'
@@ -318,22 +321,31 @@ class World:
                     break
 
     def draw(self, surface, camera):
-        for tile in self.tiles:
-            animated = False
-            frame = 0
-            if tile.tile_type == 'water' and len(self.images['water']) > 1:
-                animated = True
-                frame = self.animation_frame % len(self.images['water'])
-            tile.draw(surface, camera, animated, frame)
+        # Calculate visible area
+        start_col = max(0, camera.offset_x // config.TILE_SIZE)
+        end_col = min((camera.offset_x + camera.width) // config.TILE_SIZE + 1, self.width // config.TILE_SIZE)
+        start_row = max(0, camera.offset_y // config.TILE_SIZE)
+        end_row = min((camera.offset_y + camera.height) // config.TILE_SIZE + 1, self.height // config.TILE_SIZE)
+
+        for row in range(start_row, end_row):
+            for col in range(start_col, end_col):
+                tile_index = row * (self.width // config.TILE_SIZE) + col
+                tile = self.tiles[tile_index]
+                animated = False
+                frame = 0
+                if tile.tile_type == 'water' and len(self.images['water']) > 1:
+                    animated = True
+                    frame = self.animation_frame % len(self.images['water'])
+                tile.draw(surface, camera, animated, frame)
         
-        # Handle animated tiles (e.g., ocean)
+        # Handle animated tiles
         if len(self.images['water']) > 1:
             self.animation_timer += 1
-            if self.animation_timer >= 10:  # Adjust frame rate as needed
+            if self.animation_timer >= 10:
                 self.animation_timer = 0
                 self.animation_frame += 1
         
-        # Draw active items (e.g., mushrooms)
+        # Draw active items
         for item in self.active_items:
             item.draw(surface, camera)
 
@@ -381,4 +393,4 @@ class World:
                 mushroom = Item(x, y, 'mushroom')
                 self.active_items.add(mushroom)
                 spawned += 1
-            attempts += 1
+            attempts += 1 
