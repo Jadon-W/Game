@@ -172,4 +172,4 @@ class HUD:
         level_text = self.font.render(f"Level: {self.player.level}", True, config.WHITE)
         shadow_text = self.font.render(f"Level: {self.player.level}", True, self.text_shadow_color)
         surface.blit(shadow_text, (x + 10 + self.shadow_offset, y + 5 + self.shadow_offset))
-        surface.blit(level_text, (x + 10, y + 5))
+        surface.blit(level_text, (x + 10, y + 5)) 
