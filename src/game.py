@@ -1,5 +1,3 @@
-# game.py
-
 import pygame
 import sys
 import math  # Import the math module
@@ -10,6 +8,10 @@ from camera import Camera
 from enemy import Enemy
 from time_manager import TimeManager
 from hud import HUD  # Import the HUD class
+from pause_menu import PauseMenu  # Import the PauseMenu class
+from particles import ParticleSystem  # Import the ParticleSystem class
+from settings_menu import SettingsMenu
+from quest_display import QuestDisplay  # Import the QuestDisplay class
 import config
 import random
 import time
@@ -29,7 +31,13 @@ class Game:
         self.spawn_enemies(count=5)  # Initialize enemy spawning with desired count
         self.time_manager = TimeManager()
         self.hud = HUD(self.player, self.quest_manager, self.time_manager)
-        
+        self.quest_display = QuestDisplay(self.quest_manager, self.camera)  # Initialize QuestDisplay
+        self.pause_menu = PauseMenu(self)
+        self.paused = False
+        self.settings_menu = SettingsMenu(self)
+        self.pause_menu.settings_menu = self.settings_menu  # Link settings menu
+        self.particle_system = ParticleSystem(self.time_manager)
+        self.quest_display.update_filtered_quests()
 
     def spawn_enemies(self, count=5):
         """
@@ -75,11 +83,13 @@ class Game:
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    pygame.quit()
-                    sys.exit()
+                    self.toggle_pause()
                 elif event.key == pygame.K_i:
                     self.inventory_visible = not self.inventory_visible  # Toggle inventory
                     print(f"Inventory {'Opened' if self.inventory_visible else 'Closed'}.")
+                elif event.key == pygame.K_q:
+                    self.quest_display.toggle_display()  # Toggle quest display
+                    print(f"Quest Display {'Opened' if self.quest_display.active else 'Closed'}.")
                 elif event.key == pygame.K_r:
                     # Implement dropping the last item in the inventory
                     if self.player.inventory.items:
@@ -97,23 +107,60 @@ class Game:
                             self.world.active_items.add(item)
                             print(f"Dropped {item.item_type} at ({item.x}, {item.y})")
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:  # Left click
-                    if self.inventory_visible:
-                        mouse_pos = pygame.mouse.get_pos()
-                        self.player.inventory.handle_mouse_click(mouse_pos, self.player)
-                    else:
+                if self.quest_display.active:
+                    self.quest_display.handle_event(event)
+                elif self.inventory_visible:
+                    mouse_pos = pygame.mouse.get_pos()
+                    self.player.inventory.handle_mouse_click(mouse_pos, self.player)
+                elif self.paused:
+                    # If paused, pass the event to the pause menu
+                    mouse_pos = pygame.mouse.get_pos()
+                    self.pause_menu.handle_mouse_click(mouse_pos)
+                else:
+                    if event.button == 1:  # Left click
+                        # Determine attacker's direction based on mouse position
+                        mouse_x, mouse_y = pygame.mouse.get_pos()
+                        # Convert mouse position to world coordinates
+                        world_mouse_x = mouse_x + self.camera.offset_x
+                        world_mouse_y = mouse_y + self.camera.offset_y
+                        # Calculate direction from player to mouse
+                        dx = world_mouse_x - self.player.rect.centerx
+                        dy = world_mouse_y - self.player.rect.centery
+                        angle = math.atan2(dy, dx)
+                        direction = None
+                        if -math.pi / 4 <= angle < math.pi / 4:
+                            direction = 'right'
+                        elif math.pi / 4 <= angle < 3 * math.pi / 4:
+                            direction = 'down'
+                        elif -3 * math.pi / 4 <= angle < -math.pi / 4:
+                            direction = 'up'
+                        else:
+                            direction = 'left'
+                        self.player.direction = direction
                         self.player.attack(self.enemies)
 
+    def toggle_pause(self):
+        self.paused = not self.paused
+        self.pause_menu.toggle_menu()
+        print(f"Game {'Paused' if self.paused else 'Resumed'}.")
+    
     def update(self):
-        keys_pressed = pygame.key.get_pressed()
-        self.player.handle_movement(keys_pressed, self.world)
-        dt = self.clock.get_time() / 1000 * 60  # Convert to in-game minutes
-        self.player.update(dt)
-        self.quest_manager.update_quests(self.player, self.world, self) 
-        self.camera.update(self.player, self.world)
-        self.enemies.update(self.player)
-        self.time_manager.update(dt)  # Update time
-        self.process_notifications()
+        if not self.paused:
+            keys_pressed = pygame.key.get_pressed()
+            self.player.handle_movement(keys_pressed, self.world)
+            dt = self.clock.get_time() / 1000 * 60  # Convert to in-game minutes
+            self.player.update(dt)
+            self.quest_manager.update_quests(self.player, self.world, self) 
+            self.camera.update(self.player, self.world)
+            self.enemies.update(self.player)  # Update all enemies
+            self.time_manager.update(dt)  # Update time
+            self.particle_system.update()  # Update particles
+            self.quest_display.update_filtered_quests()
+            self.time_manager.update_overlays()
+            self.process_notifications()
+        else:
+            # If paused, do not update game state, but may want to pause particles
+            pass
     
     def render(self):
         self.window.fill(config.BLACK)  # Clear the screen
@@ -126,19 +173,20 @@ class Game:
             self.window.blit(enemy.image, (draw_x, draw_y))
         
         self.player.draw(self.window, self.camera)
-        self.display_quests()
         if self.inventory_visible:
             self.player.inventory.draw(self.window)
+        if self.quest_display.active:
+            self.quest_display.draw(self.window)
         self.display_notifications()
         self.hud.draw(self.window)  # Draw HUD elements
+        self.particle_system.draw(self.window, self.camera)  # Draw particles
         self.time_manager.draw_lighting(self.window)  # Draw lighting overlays
+        
+        if self.paused:
+            self.pause_menu.draw(self.window)  # Draw pause menu overlay
+        
         pygame.display.flip()
 
-    def display_quests(self):
-        """
-        Display active quests on the screen.
-        """
-        pass
     def run(self):
         while True:
             frame_start = time.time()
@@ -146,8 +194,10 @@ class Game:
             self.handle_events()
             self.update()
             self.render()
-            frame_time = time.time() - frame_start
-        
+            frame_end = time.time()
+            frame_time = frame_end - frame_start
+            
+    
     def display_notifications(self):
         """
         Render active notifications on the screen.
@@ -156,45 +206,25 @@ class Game:
         y_offset = 50  # Starting y position for notifications
         for notification in self.notifications:
             text = font.render(notification['message'], True, config.YELLOW)
-            self.window.blit(text, (config.WIDTH // 2 - text.get_width() // 2, y_offset))
+            surface_rect = text.get_rect(center=(config.WIDTH // 2, y_offset))
+            self.window.blit(text, surface_rect)
             notification['timer'] -= 1
             y_offset += 30  # Space between notifications
-
+    
     def process_notifications(self):
         """
         Remove notifications that have expired.
         """
         self.notifications = [n for n in self.notifications if n['timer'] > 0]
-
+    
     def add_notification(self, message, duration=60):
         """
         Add a new notification to the queue.
         """
         self.notifications.append({'message': message, 'timer': duration})
-
+    
     def display_hud(self):
         """
         Display player's health, XP, gold, and current time on the screen.
         """
-        font = pygame.font.SysFont('Arial', 20)
-        health_text = font.render(f"Health: {self.player.health}", True, config.WHITE)
-        xp_text = font.render(f"XP: {self.player.xp}", True, config.WHITE)
-        gold_text = font.render(f"Gold: {self.player.gold}", True, config.WHITE)
-        time_text = font.render(f"Time: {self.time_manager.get_time_display()}", True, config.WHITE)
-        
-        self.window.blit(health_text, (10, 40))
-        self.window.blit(xp_text, (10, 65))
-        self.window.blit(gold_text, (10, 90))
-        self.window.blit(time_text, (10, 115))
-    def take_damage(self, damage, attacker_direction=None):
-        """
-        Wrapper to add notifications when the player takes damage.
-        """
-        self.player.take_damage(damage, attacker_direction)
-        self.add_notification(f"Player took {damage} damage!")
-
-    def enemy_die(self, enemy_type):
-        """
-        Wrapper to add notifications when an enemy dies.
-        """
-        self.add_notification(f"Defeated a {enemy_type}!")
+        self.hud.draw(self.window)
