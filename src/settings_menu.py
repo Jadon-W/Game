@@ -16,6 +16,9 @@ class SettingsMenu:
         self.active = not self.active
     
     def handle_event(self, event):
+        if not self.active:
+            return
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
                 self.selected = (self.selected - 1) % len(self.options)
@@ -55,29 +58,32 @@ class SettingsMenu:
     
     def open_audio_settings(self):
         """
-        Placeholder for audio settings.
+        Implement audio settings adjustments.
         """
-        print("Audio settings are not yet implemented.")
-        # Implement audio settings adjustments here
+        # Placeholder implementation
+        # You can expand this with actual audio settings controls
+        print("Audio settings opened.")
     
     def open_display_settings(self):
         """
-        Placeholder for display settings.
+        Implement display settings adjustments.
         """
-        print("Display settings are not yet implemented.")
-        # Implement display settings adjustments here
+        # Placeholder implementation
+        # You can expand this with actual display settings controls
+        print("Display settings opened.")
     
     def open_controls_settings(self):
         """
-        Placeholder for control settings.
+        Implement control settings adjustments.
         """
-        print("Control settings are not yet implemented.")
-        # Implement control settings adjustments here
+        # Placeholder implementation
+        # You can expand this with actual control settings controls
+        print("Control settings opened.")
     
     def draw(self, surface):
-        """
-        Draw the settings menu overlay.
-        """
+        if not self.active:
+            return
+        
         # Semi-transparent overlay
         overlay = pygame.Surface((config.WIDTH, config.HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))  # Dark semi-transparent
