@@ -1,26 +1,34 @@
+# game.py
+
 import pygame
 import sys
-import math  # Import the math module
+import math
+import json  # For saving and loading game data
 from player import Player
 from world import World
-from quests import QuestManager
+from quests import QuestManager, Quest
 from camera import Camera
 from enemy import Enemy
 from time_manager import TimeManager
-from hud import HUD  # Import the HUD class
-from pause_menu import PauseMenu  # Import the PauseMenu class
-from particles import ParticleSystem  # Import the ParticleSystem class
+from hud import HUD
+from pause_menu import PauseMenu
+from particles import ParticleSystem
 from settings_menu import SettingsMenu
-from quest_display import QuestDisplay  # Import the QuestDisplay class
+from quest_display import QuestDisplay
 import config
 import random
 import time
+import cProfile
+import pstats
+import io
 
 class Game:
     def __init__(self, window, clock):
         self.window = window
-        self.clock = clock
-        self.world = World(config.WORLD_WIDTH, config.WORLD_HEIGHT)  # Uses updated world size
+        self.clock = pygame.time.Clock()
+        self.fps_font = pygame.font.SysFont('Arial', 20)
+        self.time_manager = TimeManager()
+        self.world = World(config.WORLD_WIDTH, config.WORLD_HEIGHT, self.time_manager)
         self.player = Player(self.world.width // 2, self.world.height // 2)
         self.quest_manager = QuestManager()
         self.quest_manager.generate_quest(self.world)  # Start with one quest
@@ -29,16 +37,13 @@ class Game:
         self.notifications = []  # List to store active notifications
         self.enemies = pygame.sprite.Group()  # Group to hold all enemy instances
         self.spawn_enemies(count=5)  # Initialize enemy spawning with desired count
-        self.time_manager = TimeManager()
         self.hud = HUD(self.player, self.quest_manager, self.time_manager)
         self.quest_display = QuestDisplay(self.quest_manager, self.camera)  # Initialize QuestDisplay
         self.pause_menu = PauseMenu(self)
         self.paused = False
-        self.settings_menu = SettingsMenu(self)
-        self.pause_menu.settings_menu = self.settings_menu  # Link settings menu
         self.particle_system = ParticleSystem(self.time_manager)
-        self.quest_display.update_filtered_quests()
-
+        self.profiler = cProfile.Profile()
+        
     def spawn_enemies(self, count=5):
         """
         Spawn a specified number of enemies near the player's position.
@@ -114,8 +119,7 @@ class Game:
                     self.player.inventory.handle_mouse_click(mouse_pos, self.player)
                 elif self.paused:
                     # If paused, pass the event to the pause menu
-                    mouse_pos = pygame.mouse.get_pos()
-                    self.pause_menu.handle_mouse_click(mouse_pos)
+                    self.pause_menu.handle_event(event)
                 else:
                     if event.button == 1:  # Left click
                         # Determine attacker's direction based on mouse position
@@ -143,7 +147,7 @@ class Game:
         self.paused = not self.paused
         self.pause_menu.toggle_menu()
         print(f"Game {'Paused' if self.paused else 'Resumed'}.")
-    
+
     def update(self):
         if not self.paused:
             keys_pressed = pygame.key.get_pressed()
@@ -161,7 +165,7 @@ class Game:
         else:
             # If paused, do not update game state, but may want to pause particles
             pass
-    
+
     def render(self):
         self.window.fill(config.BLACK)  # Clear the screen
         self.world.draw(self.window, self.camera)
@@ -197,7 +201,6 @@ class Game:
             frame_end = time.time()
             frame_time = frame_end - frame_start
             
-    
     def display_notifications(self):
         """
         Render active notifications on the screen.
@@ -210,7 +213,7 @@ class Game:
             self.window.blit(text, surface_rect)
             notification['timer'] -= 1
             y_offset += 30  # Space between notifications
-    
+
     def process_notifications(self):
         """
         Remove notifications that have expired.
